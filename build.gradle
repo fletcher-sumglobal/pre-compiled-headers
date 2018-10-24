@@ -8,8 +8,8 @@ plugins {
 
 application {
    //source tree for CppCompile
-    //source.from project.fileTree(dir: 'src', include: '**/*.cpp')
-    //privateHeaders.from project.file('src/hello/headers')
+    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
+    privateHeaders.from project.file('src/hello/headers')
     
     
     binaries.whenElementFinalized { binary ->
@@ -17,25 +17,25 @@ application {
             //Register CppPreCompiledHeaderCompile
             def linkerTask = binary.linkTask.get()
             def resourceTaskName = "preCompileHeader" + binary.name.capitalize()
-            def compileResources = project.tasks.register(resourceTaskName, CppPreCompiledHeaderCompile) {
+            def pch = project.tasks.register(resourceTaskName, CppPreCompiledHeaderCompile) {
                 
                 targetPlatform = binary.targetPlatform
                 toolChain = binary.toolChain
                 includes.from project.file('src/hello/headers')
-                source.from project.fileTree(dir: 'src/hello/cpp' )
+                source.from project.fileTree(dir: 'src/hello/headers', include: '**/pch.h' )
                 
                 compilerArgs.addAll toolChain.map { NativeToolChain toolChain ->
                     List<String> compilerSpecificArgs = []
                     if (toolChain instanceof VisualCpp) {
-                        compilerSpecificArgs << '/v'
+                        compilerSpecificArgs << '/c'
                     }
                     return compilerSpecificArgs
                 }
-                outputDir = new File(project.buildDir, "pch/${binary.name}")
+                objectFileDir = new File(project.buildDir, "pch/${binary.name}")
             }
 
-            //FileTree resourceOutputs = compileResources.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include(["**/*.res","**/*.obj"]));
-            //linkerTask.source(resourceOutputs)
+            FileTree pchOutput = pch.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include(["**/*.h","**/*.obj"]));
+            linkerTask.source(pchOutput)
         }
     }
 }

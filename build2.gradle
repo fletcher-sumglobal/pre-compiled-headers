@@ -1,0 +1,52 @@
+plugins {
+    id 'cpp-application'
+}
+
+
+application {
+   //source tree for CppCompile
+    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
+    privateHeaders.from project.file('src/hello/headers')
+    
+    
+    binaries.whenElementFinalized { binary ->
+        if (binary.targetPlatform.operatingSystemFamily.isWindows()) {
+            
+            def preGenTaskName = "prefixHeaderGen" + binary.name.capitalize()
+            def prefixHeaderGen = project.tasks.register(resourceTaskName, PrefixHeaderFileGenerateTask) {
+                targetPlatform = binary.targetPlatform
+                toolChain = binary.toolChain
+                
+                header = ??
+                prefixHeaderFile = ??
+            }
+
+            //Register CppPreCompiledHeaderCompile
+            def pchTaskName = "preCompileHeader" + binary.name.capitalize()
+            def pch = project.tasks.register(pchTaskName, CppPreCompiledHeaderCompile) {
+                
+                targetPlatform = binary.targetPlatform
+                toolChain = binary.toolChain
+                includes.from project.file('src/hello/headers')
+                source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp' )                
+                
+                pchObjects.from = ??
+                prefixHeaderFile = ??
+                includeString = "pch.h"
+                
+                compilerArgs.addAll toolChain.map { NativeToolChain toolChain ->
+                    List<String> compilerSpecificArgs = []
+                    if (toolChain instanceof VisualCpp) {
+                        compilerSpecificArgs << '/c'
+                    }
+                    return compilerSpecificArgs
+                }
+                objectFileDir = new File(binary.getNamingScheme().getOutputDirectory(project.getBuildDir(), "objs"), languageSourceSet.getProjectScopedName() + "PCH")
+            }
+
+            FileTree pchOutput = pch.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include("**/*.pch", "**/*.gch"));
+            def linkerTask = binary.linkTask.get()
+            linkerTask.source(pchOutput)
+        }
+    }
+}

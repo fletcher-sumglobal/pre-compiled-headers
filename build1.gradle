@@ -1,0 +1,46 @@
+import org.gradle.nativeplatform.toolchain.internal.PCHUtils
+import com.google.common.collect.Lists
+
+buildscript {
+    dependencies {
+        classpath 'com.google.guava:guava:23.0'
+    }
+}
+
+plugins {
+    id 'cpp-application'
+}
+
+task prefixGen(type: PrefixHeaderGen) {
+    header = 'pch.h'
+    prefixHeaderFile = project.file('build/tmp/hello/cpp/prefixHeaders/prefix-headers.h') 
+}
+
+task pchGen(type: CppPreCompiledHeaderCompile) {
+    targetPlatform="platform 'windows_x86'"
+    source.from project.file('src/hello/headers') 
+    includes.from prefixGen.prefixHeaderFile
+    objectFileDir = new File(project.buildDir, "pchOut")
+    dependsOn prefixGen
+}
+
+application {
+    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
+    privateHeaders.from project.file('src/hello/headers/pch.h')
+}
+
+class PrefixHeaderGen extends DefaultTask {
+
+    @OutputFile
+    final RegularFileProperty prefixHeaderFile = project.objects.fileProperty()
+    
+    @Input
+    final Property<String> header = project.objects.property(String)
+
+    
+    @TaskAction
+    void generatePrefixHeaderFile() {
+        PCHUtils.generatePrefixHeaderFile(Lists.newArrayList(header.get()), prefixHeaderFile.getAsFile().get());
+    }
+}
+

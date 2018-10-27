@@ -1,41 +1,36 @@
-import org.gradle.api.file.FileTree
-import org.gradle.api.tasks.util.PatternSet
-
 plugins {
     id 'cpp-application'
 }
 
 
 application {
-   //source tree for CppCompile
-    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
-    privateHeaders.from project.file('src/hello/headers')
-    
-    
+ 
+//    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
+//    privateHeaders.from project.file('src/hello/headers')
+
     binaries.whenElementFinalized { binary ->
         if (binary.targetPlatform.operatingSystemFamily.isWindows()) {
-            //Register CppPreCompiledHeaderCompile
-            def linkerTask = binary.linkTask.get()
-            def resourceTaskName = "preCompileHeader" + binary.name.capitalize()
-            def pch = project.tasks.register(resourceTaskName, CppPreCompiledHeaderCompile) {
-                
+ 
+            def pchTaskName = "preCompileHeader" + binary.name.capitalize()
+            def pchTask = project.tasks.register(pchTaskName, CppPreCompiledHeaderCompile) {
                 targetPlatform = binary.targetPlatform
                 toolChain = binary.toolChain
-                includes.from project.file('src/hello/headers')
-                source.from project.fileTree(dir: 'src/hello/headers', include: '**/pch.h' )
-                
-                compilerArgs.addAll toolChain.map { NativeToolChain toolChain ->
-                    List<String> compilerSpecificArgs = []
-                    if (toolChain instanceof VisualCpp) {
-                        compilerSpecificArgs << '/c'
-                    }
-                    return compilerSpecificArgs
-                }
-                objectFileDir = new File(project.buildDir, "pch/${binary.name}")
-            }
 
-            FileTree pchOutput = pch.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include(["**/*.h","**/*.obj"]));
-            linkerTask.source(pchOutput)
+                objectFileDir = new File(project.buildDir, "pchOut")
+                
+                includes.from project.file('src/hello/headers')
+                source.from project.file('src/hello/headers')                                
+            }
+            def linkerTask = binary.linkTask.get()
+            File pchFile = pchTask.get().getOutputs().getFiles().getAsFileTree().getSingleFile().matching(new PatternSet().include("**/*.pch",));
+            linkerTask.source(pchFile)
         }
     }
 }
+
+//tasks.withType(CppCompile) {
+//    //pchObjects.from project.fileTree(dir: 'pchOut' )
+//    //prefixHeaderFile.from project.fileTree(dir: 'pchOut', include:'**/pch.pch' )
+//    //includeString = 'pch.h'
+//}
+

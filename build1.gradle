@@ -16,17 +16,38 @@ task prefixGen(type: PrefixHeaderGen) {
     prefixHeaderFile = project.file('build/tmp/hello/cpp/prefixHeaders/prefix-headers.h') 
 }
 
-task pchGen(type: CppPreCompiledHeaderCompile) {
-    targetPlatform="platform 'windows_x86'"
-    source.from project.file('src/hello/headers') 
-    includes.from prefixGen.prefixHeaderFile
-    objectFileDir = new File(project.buildDir, "pchOut")
-    dependsOn prefixGen
+application {
+    
+    binaries.whenElementFinalized { binary ->
+        if (binary.targetPlatform.operatingSystemFamily.isWindows()) {
+ 
+            def pchTaskName = "preCompileHeader" + binary.name.capitalize()
+            def pchTask = project.tasks.register(pchTaskName, CppPreCompiledHeaderCompile) {
+                targetPlatform = binary.targetPlatform
+                toolChain = binary.toolChain
+
+                objectFileDir = new File(project.buildDir, "pch/${binary.name}")
+                macros.put('DLL_EXPORT', null)
+                includes.from project.fileTree(dir: 'src/hello')
+                source.from prefixGen.prefixHeaderFile
+                dependsOn prefixGen
+            }
+            FileTree resourceOutputs = pchTask.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include("**/*.pch"));
+            binary.linkTask.get().source(resourceOutputs)
+
+        }
+    }
+
 }
 
-application {
-    source.from project.fileTree(dir: 'src', include: '**/*.cpp')
-    privateHeaders.from project.file('src/hello/headers/pch.h')
+tasks.withType(LinkExecutable) {
+    linkerArgs.addAll toolChain.map { NativeToolChain toolChain ->
+        List<String> linkerSpecificArgs = []
+        if (toolChain instanceof VisualCpp) {
+            linkerSpecificArgs << 'user32.lib'
+        }
+        return linkerSpecificArgs
+    }
 }
 
 class PrefixHeaderGen extends DefaultTask {

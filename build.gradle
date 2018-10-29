@@ -17,10 +17,9 @@ task prefixGen(type: PrefixHeaderGen) {
 }
 
 application {
-    source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp')
-    publicHeaders.from project.file('src/hello/headers')
-    publicHeaders.from project.file('src/hello/cpp')
-    
+//    source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp')
+//    publicHeaders.from project.file('src/hello/headers')
+//    
     binaries.whenElementFinalized { binary ->
         if (binary.targetPlatform.operatingSystemFamily.isWindows()) {
 
@@ -37,11 +36,10 @@ application {
                 includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um')
                 includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/shared')
                 includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt')
-                
-                
                 source.from prefixGen.prefixHeaderFile
                 dependsOn prefixGen
             }
+            
             FileTree resourceOutputs = pchTask.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include("**/*.pch"));
             binary.linkTask.get().source(resourceOutputs)
         }

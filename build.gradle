@@ -8,7 +8,6 @@ buildscript {
 }
 
 plugins {
-    id 'cpp-library'
     id 'cpp-application'
 }
 
@@ -17,14 +16,11 @@ task prefixGen(type: PrefixHeaderGen) {
     prefixHeaderFile = project.file('build/tmp/hello/cpp/prefixHeaders/prefix-headers.h')
 }
 
-library {
-    linkage =  [
-        Linkage.STATIC,
-        Linkage.SHARED
-    ]
+application {
     source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp')
-    publicHeaders.from project.fileTree(dir: 'src/hello/headers', include: '**/*.h')
-
+    publicHeaders.from project.file('src/hello/headers')
+    publicHeaders.from project.file('src/hello/cpp')
+    
     binaries.whenElementFinalized { binary ->
         if (binary.targetPlatform.operatingSystemFamily.isWindows()) {
 
@@ -35,7 +31,14 @@ library {
 
                 objectFileDir = new File(project.buildDir, "pch/${binary.name}")
                 macros.put('DLL_EXPORT', null)
-                includes.from project.fileTree(dir: 'src/hello')
+                includes.from project.file ('src/hello/headers')
+                includes.from project.file ('src/hello/cpp')
+                includes.from project.file ('C:/Program Files (x86)/Microsoft Visual Studio/2017/Professional/VC/Tools/MSVC/14.13.26128/include')
+                includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um')
+                includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/shared')
+                includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt')
+                
+                
                 source.from prefixGen.prefixHeaderFile
                 dependsOn prefixGen
             }
@@ -45,17 +48,7 @@ library {
     }
 }
 
-/*
- * 
- */
-application {
-    source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp')
-    publicHeaders.from project.fileTree(dir: 'src/hello/headers', include: '**/*.h')
-    pchObjects = pchTask.objectFileDir
-    prefixHeaderFile = 'build/tmp/hello/cpp/prefixHeaders/prefix-headers.h'
-    includeString = 'pch.h'
-}
-
+ 
 /*
  * It would be nice to declare the CppPreCompiledHeaderCompile task this way
  * but there is no visibility to targetPlatform & toolchain

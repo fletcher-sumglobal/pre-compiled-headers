@@ -19,11 +19,12 @@ library {
         Linkage.STATIC,
         Linkage.SHARED
     ]
-    source.from project.fileTree(dir: 'src/hello/cpp', include: '**/*.cpp')
-    publicHeaders.from project.fileTree(dir: 'src/hello/headers', include: '**/*.h')
-    //    pchObjects.from pchTask.objectFileDir
-    //    headerFile.from prefixGen.prefixHeaderFile
-    //    includeString ='pch.h'
+    source.from project.file('src/hello/cpp')
+    source.from project.file('src/main/cpp')
+    publicHeaders.from project.file('src/hello/headers')
+//    pchObjects.from pchTask.objectFileDir
+//    headerFile.from prefixGen.prefixHeaderFile
+//    includeString ='pch.h'
 
     binaries.whenElementFinalized { binary ->
 
@@ -63,6 +64,13 @@ task pchGen(type: CppPreCompiledHeaderCompile) {
     objectFileDir = new File(project.buildDir, "pchOut")
     dependsOn prefixGen
 }
+
+//tasks.withType(CppCompile) {
+//    pchObjects.from pchTask.objectFileDir
+//    headerFile.from prefixGen.prefixHeaderFile
+//    includeString = 'pch.h'
+//}
+//
 
 tasks.withType(LinkExecutable) {
 

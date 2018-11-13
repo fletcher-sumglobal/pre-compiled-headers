@@ -1,11 +1,13 @@
 import org.gradle.nativeplatform.toolchain.internal.PCHUtils
 import com.google.common.collect.Lists
+import org.gradle.nativeplatform.toolchain.internal.PreCompiledHeader
+import org.gradle.nativeplatform.toolchain.internal.ToolType;
 
 buildscript {
     dependencies { classpath 'com.google.guava:guava:23.0' }
 }
 
-plugins { id 'cpp-library' }
+plugins { id 'cpp-application' }
 
 task prefixGen(type: PrefixHeaderGen) {
     header = 'pch.h'
@@ -14,17 +16,10 @@ task prefixGen(type: PrefixHeaderGen) {
 
 def pchTask = null
 
-library {
-    linkage =  [
-        Linkage.STATIC,
-        Linkage.SHARED
-    ]
+application {
     source.from project.file('src/hello/cpp')
     source.from project.file('src/main/cpp')
-    publicHeaders.from project.file('src/hello/headers')
-//    pchObjects.from pchTask.objectFileDir
-//    headerFile.from prefixGen.prefixHeaderFile
-//    includeString ='pch.h'
+    privateHeaders.from project.file('src/hello/headers')
 
     binaries.whenElementFinalized { binary ->
 
@@ -39,6 +34,10 @@ library {
                 macros.put('DLL_EXPORT', null)
                 includes.from project.file ('src/hello/headers')
                 includes.from project.file ('src/hello/cpp')
+//                binary.getPlatformToolProvider().getSystemLibrary(ToolType).getIncludeDirs().each {
+//                    includes.from it
+//                }
+                
                 includes.from project.file ('C:/Program Files (x86)/Microsoft Visual Studio/2017/Professional/VC/Tools/MSVC/14.13.26128/include')
                 includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um')
                 includes.from project.file ('C:/Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/shared')
@@ -47,10 +46,20 @@ library {
                 dependsOn prefixGen
             }
 
-            //FileTree pchOutput = pchTask.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include("**/*.pch"));
-            //binary.linkTask.get().source(pchOutput)
+            FileTree pchOutput = pchTask.get().getOutputs().getFiles().getAsFileTree().matching(new PatternSet().include("**/*.obj"));
+            binary.linkTask.get().source(pchOutput)
         }
     }
+    
+    //preCompileHeader = new PreCompiledHeader()
+//    preCompileHeader.set pchTask.objectFileDir
+//    preCompileHeader.set prefixGen.prefixHeaderFile
+//    preCompileHeader.set 'pch.h'
+//    
+//    pchObjects.from pchTask.objectFileDir
+//    headerFile.from prefixGen.prefixHeaderFile
+//    includeString ='pch.h'
+
 }
 
 
@@ -70,10 +79,9 @@ task pchGen(type: CppPreCompiledHeaderCompile) {
 //    headerFile.from prefixGen.prefixHeaderFile
 //    includeString = 'pch.h'
 //}
-//
+
 
 tasks.withType(LinkExecutable) {
-
 
     linkerArgs.addAll toolChain.map { NativeToolChain toolChain ->
         List<String> linkerSpecificArgs = []
